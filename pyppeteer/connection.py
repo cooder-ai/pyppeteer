@@ -73,10 +73,7 @@ class Connection(EventEmitter):
             await self.connection.send(msg)
         except websockets.ConnectionClosed:
             logger.error('connection unexpectedly closed')
-            callback = self._callbacks.get(callback_id, None)
-            if callback and not callback.done():
-                callback.set_result(None)
-                await self.dispose()
+            await self.dispose()
 
     def send(self, method: str, params: dict = None) -> Awaitable:
         """Send message via the connection."""
