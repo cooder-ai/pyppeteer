@@ -1180,7 +1180,7 @@ function addPageBinding(bindingName) {
         return await self._screenshotTask(screenshotType, options)
 
     async def _screenshotTask(self, format: str, options: dict) -> Union[bytes, str]:  # noqa: C901
-        await self._client.send('Target.activateTarget', {'targetId': self._target._targetId,})
+        # await self._client.send('Target.activateTarget', {'targetId': self._target._targetId,})
         clip, quality = options.get('clip'), options.get('quality')
 
         if clip:
