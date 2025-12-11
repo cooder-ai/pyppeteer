@@ -291,7 +291,11 @@ class CDPSession(EventEmitter):
 
     def _on_message(self, msg: str) -> None:  # noqa: C901
         logger_session.debug(f'RECV: {msg}')
-        obj = json.loads(msg)
+        try:
+            obj = json.loads(msg)
+        except Exception as e:
+            logger.error(f'[CDPSession._on_message] Invalid JSON message: {e}, sessionId={self._sessionId}')
+            return
         _id = obj.get('id')
         if _id:
             callback = self._callbacks.get(_id)
@@ -319,7 +323,14 @@ class CDPSession(EventEmitter):
                 if session:
                     session._on_closed()
                     del self._sessions[sessionId]
-            self.emit(obj.get('method'), obj.get('params'))
+            try:
+                self.emit(obj.get('method'), obj.get('params'))
+            except Exception as e:
+                # Catch exceptions from event handlers to prevent recv loop crash
+                logger.error(
+                    f'[CDPSession._on_message] Error in event handler for {e} '
+                    f'sessionId={self._sessionId}'
+                )
 
     async def detach(self) -> None:
         """Detach session from target.
