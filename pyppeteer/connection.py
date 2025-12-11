@@ -59,11 +59,18 @@ class Connection(EventEmitter):
                     resp = await self.connection.recv()
                     if resp:
                         await self._on_message(resp)
-                except (websockets.ConnectionClosed, ConnectionResetError):
-                    logger.info('connection closed')
+                except (websockets.ConnectionClosed, ConnectionResetError) as e:
+                    logger.warning(
+                        f'[Connection._recv_loop] WebSocket closed during recv: '
+                        f'{type(e).__name__}: {e}, url={self._url}'
+                    )
                     break
                 await asyncio.sleep(0)
         if self._connected:
+            logger.warning(
+                f'[Connection._recv_loop] Recv loop exited, starting cleanup, '
+                f'url={self._url}'
+            )
             self._loop.create_task(self.dispose())
 
     async def _async_send(self, msg: str, callback_id: int) -> None:
@@ -71,8 +78,12 @@ class Connection(EventEmitter):
             await asyncio.sleep(self._delay)
         try:
             await self.connection.send(msg)
-        except websockets.ConnectionClosed:
-            logger.error('connection unexpectedly closed')
+        except websockets.ConnectionClosed as e:
+            logger.error(
+                f'[Connection._async_send] Connection closed during send: '
+                f'{type(e).__name__}: {e}, url={self._url}, '
+                f'callback_id={callback_id}'
+            )
             await self.dispose()
 
     def send(self, method: str, params: dict = None) -> Awaitable:
@@ -140,6 +151,12 @@ class Connection(EventEmitter):
             self._on_query(msg)
 
     async def _on_close(self) -> None:
+        logger.info(
+            f'[Connection._on_close] Closing connection, url={self._url}, '
+            f'callbacks_to_cleanup={len(self._callbacks)}, '
+            f'sessions_to_cleanup={len(self._sessions)}'
+        )
+
         if self._closeCallback:
             self._closeCallback()
             self._closeCallback = None
@@ -158,12 +175,20 @@ class Connection(EventEmitter):
 
         # close connection
         if hasattr(self, 'connection'):  # may not have connection
+            logger.info(f'[Connection._on_close] Closing WebSocket, url={self._url}')
             await self.connection.close()
         if not self._recv_fut.done():
             self._recv_fut.cancel()
 
     async def dispose(self) -> None:
         """Close all connection."""
+        import traceback
+        logger.warning(
+            f'[Connection.dispose] Disposing connection, url={self._url}, '
+            f'pending_callbacks={len(self._callbacks)}, '
+            f'sessions={len(self._sessions)}\n'
+            f'Call stack:\n{"".join(traceback.format_stack())}'
+        )
         self._connected = False
         await self._on_close()
 

@@ -205,12 +205,17 @@ class Launcher(object):
 
     async def killChrome(self) -> None:
         """Terminate chromium process."""
-        logger.info('terminate chrome process...')
+        import traceback
+        logger.info(f'[Launcher.killChrome] Terminating chrome process...\n'
+                    f'Call stack:\n{"".join(traceback.format_stack())}')
         if self.connection and self.connection._connected:
             try:
+                logger.info('[Launcher.killChrome] Sending Browser.close command')
                 await self.connection.send('Browser.close')
+                logger.info('[Launcher.killChrome] Disposing connection')
                 await self.connection.dispose()
             except Exception as e:
+                logger.warning(f'[Launcher.killChrome] Error during termination: {e}')
                 # ignore errors on browser termination process
                 debugError(logger, e)
         if self.temporaryUserDataDir and os.path.exists(self.temporaryUserDataDir):  # noqa: E501

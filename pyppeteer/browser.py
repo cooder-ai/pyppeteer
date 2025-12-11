@@ -263,6 +263,13 @@ class Browser(EventEmitter):
 
     async def disconnect(self) -> None:
         """Disconnect browser."""
+        import traceback
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.warning(
+            f'[Browser.disconnect] Disconnecting browser\n'
+            f'Call stack:\n{"".join(traceback.format_stack())}'
+        )
         await self._connection.dispose()
         for target in self._targets.values():
             if not target._isInitialized:
