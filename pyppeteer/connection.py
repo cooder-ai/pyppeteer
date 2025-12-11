@@ -41,7 +41,18 @@ class Connection(EventEmitter):
         self._sessions: Dict[str, CDPSession] = dict()
         self.connection: CDPSession
         self._connected = False
-        self._ws = ws_connect(self._url, max_size=None, loop=self._loop, ping_interval=None, ping_timeout=None)
+        self._ws = ws_connect(
+            self._url,
+            max_size=None,           # Unlimited message size (default: 1MB)
+            max_queue=128,           # Receive queue size (default: 32) - prevent message backlog
+            read_limit=1048576,      # 1MB read buffer (default: 64KB) - faster large message reception
+            write_limit=1048576,     # 1MB write buffer (default: 64KB) - faster large message sending
+            ping_interval=10,        # Send ping every 10s (default: 20) - fast disconnect detection
+            ping_timeout=25,         # Disconnect if no pong in 25s (default: 20)
+            close_timeout=5,         # 5s close timeout (default: 10)
+            open_timeout=30,         # 30s connection timeout (default: 10)
+            loop=self._loop,
+        )
         self._recv_fut = self._loop.create_task(self._recv_loop())
         self._closeCallback: Optional[Callable[[], None]] = None
 
@@ -135,7 +146,14 @@ class Connection(EventEmitter):
                 session._on_closed()
                 del self._sessions[sessionId]
         else:
-            self.emit(method, params)
+            try:
+                self.emit(method, params)
+            except Exception as e:
+                # Catch exceptions from event handlers to prevent recv loop crash
+                logger.error(
+                    f'[Connection._on_query] Error in event handler for {method}: {e}, '
+                    f'url={self._url}'
+                )
 
     def setClosedCallback(self, callback: Callable[[], None]) -> None:
         """Set closed callback."""
@@ -144,7 +162,11 @@ class Connection(EventEmitter):
     async def _on_message(self, message: str) -> None:
         await asyncio.sleep(self._delay)
         logger_connection.debug(f'RECV: {message}')
-        msg = json.loads(message)
+        try:
+            msg = json.loads(message)
+        except Exception as e:
+            logger.error(f'[Connection._on_message] Invalid JSON message: {e}, url={self._url}')
+            return
         if msg.get('id') in self._callbacks:
             self._on_response(msg)
         else:
