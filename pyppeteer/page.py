@@ -141,6 +141,8 @@ class Page(EventEmitter):
         self._screenshotTaskQueue = screenshotTaskQueue
 
         self._workers: Dict[str, Worker] = {}
+        # Initialize tab_id from target (returns -1 if not available)
+        self._tab_id: int = target.tab_id
 
         def _onTargetAttached(event: Dict) -> None:
             targetInfo = event['targetInfo']
@@ -204,6 +206,26 @@ class Page(EventEmitter):
     def browser(self) -> 'Browser':
         """Get the browser the page belongs to."""
         return self._target.browser
+
+    @property
+    def tab_id(self) -> int:
+        """Get Chrome Extension API tab.id for this page.
+
+        Returns:
+            int: The tab id, or -1 if not available.
+
+        Note:
+            This value is automatically initialized from Target.tab_id.
+            Use set_tab_id() to update it if needed.
+        """
+        return self._tab_id
+
+    def set_tab_id(self, tab_id: int) -> None:
+        """Set Chrome Extension API tab.id for this page.
+
+        :arg int tab_id: The Chrome Extension API tab.id to associate with this page.
+        """
+        self._tab_id = tab_id
 
     def _onTargetCrashed(self, *args: Any, **kwargs: Any) -> None:
         self.emit('error', PageError('Page crashed!'))

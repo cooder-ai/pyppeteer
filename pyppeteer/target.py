@@ -109,7 +109,24 @@ class Target(object):
             return None
         return self.browser._targets.get(openerId)
 
+    @property
+    def tab_id(self) -> int:
+        """Get Chrome Extension API tab.id for this target.
+
+        Returns:
+            int: The tab id, or -1 if not available.
+
+        Note:
+            This field is not provided by CDP by default - it must be injected
+            by external systems (e.g., Chrome Extension or custom server).
+        """
+        return self._targetInfo.get('tabId', -1)
+
     def _targetInfoChanged(self, targetInfo: Dict) -> None:
+        # Preserve tabId if not provided in new targetInfo
+        if 'tabId' not in targetInfo and 'tabId' in self._targetInfo:
+            targetInfo['tabId'] = self._targetInfo['tabId']
+
         self._targetInfo = targetInfo
 
         if not self._isInitialized and (self._targetInfo['type'] != 'page' or

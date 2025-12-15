@@ -242,6 +242,28 @@ class Browser(EventEmitter):
             pages.extend(await context.pages())
         return pages
 
+    async def find_page_by_tab_id(self, tab_id: int) -> Optional[Page]:
+        """Find a page by Chrome Extension API tab.id.
+
+        :arg int tab_id: The Chrome Extension API tab.id to search for.
+        :return: The Page object if found, None otherwise.
+
+        Note:
+            Pages with tab_id == -1 (not available) will not be matched.
+
+        Example:
+            page = await browser.find_page_by_tab_id(123)
+            if page:
+                await page.goto('https://example.com')
+        """
+        if tab_id == -1:
+            return None
+        pages = await self.pages()
+        for page in pages:
+            if page.tab_id == tab_id:
+                return page
+        return None
+
     async def version(self) -> str:
         """Get version of the browser."""
         version = await self._getVersion()
@@ -266,7 +288,7 @@ class Browser(EventEmitter):
         import traceback
         import logging
         logger = logging.getLogger(__name__)
-        logger.warning(
+        logger.debug(
             f'[Browser.disconnect] Disconnecting browser\n'
             f'Call stack:\n{"".join(traceback.format_stack())}'
         )
