@@ -1182,6 +1182,10 @@ function addPageBinding(bindingName) {
           capturing screenshot with transparency.
         * ``encoding`` (str): The encoding of the image, can be either
           ``'base64'`` or ``'binary'``. Defaults to ``'binary'``.
+        * ``maxWidth`` (int): Optional. Maximum width of the screenshot. If the
+          actual screenshot width exceeds this, it will be scaled down proportionally.
+        * ``maxHeight`` (int): Optional. Maximum height of the screenshot. If the
+          actual screenshot height exceeds this, it will be scaled down proportionally.
         """
         options = merge_dict(options, kwargs)
         screenshotType = None
@@ -1251,6 +1255,10 @@ function addPageBinding(bindingName) {
             opt['clip'] = clip
         if format == 'jpeg' and quality is not None:
             opt['quality'] = quality
+        if options.get('maxWidth') is not None:
+            opt['maxWidth'] = options['maxWidth']
+        if options.get('maxHeight') is not None:
+            opt['maxHeight'] = options['maxHeight']
 
         result = await self._client.send('Page.captureScreenshot', opt)
 
